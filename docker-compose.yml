@@ -1,0 +1,7 @@
+services:
+  ipkiss:
+    build: .
+    container_name: ipkiss
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

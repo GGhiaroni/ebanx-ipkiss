@@ -1,0 +1,28 @@
+# Build artifacts
+target/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+
+# Docs (not needed inside the container)
+README.md
+LICENSE
+HELP.md
+docs/
+
+# Docker meta
+Dockerfile
+.dockerignore
+docker-compose.yml
