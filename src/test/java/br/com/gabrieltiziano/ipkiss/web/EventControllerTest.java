@@ -1,7 +1,10 @@
 package br.com.gabrieltiziano.ipkiss.web;
 
+import br.com.gabrieltiziano.ipkiss.domain.exception.AccountNotFoundException;
+import br.com.gabrieltiziano.ipkiss.domain.exception.InsufficientBalanceException;
 import br.com.gabrieltiziano.ipkiss.domain.model.Account;
 import br.com.gabrieltiziano.ipkiss.domain.service.DepositService;
+import br.com.gabrieltiziano.ipkiss.domain.service.WithdrawService;
 import br.com.gabrieltiziano.ipkiss.web.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,6 +29,9 @@ class EventControllerTest {
 
     @MockitoBean
     private DepositService depositService;
+
+    @MockitoBean
+    private WithdrawService withdrawService;
 
     @Test
     void shouldReturn201WithDepositResponseWhenDepositSucceeds() throws Exception {
@@ -57,5 +64,55 @@ class EventControllerTest {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.destination.balance").value(20));
+    }
+
+    @Test
+    void shouldReturn201WithWithdrawResponseWhenWithdrawSucceeds() throws Exception {
+        when(withdrawService.withdraw("100", 5))
+                .thenReturn(new Account("100", 15));
+
+        String body = """
+            {"type":"withdraw","origin":"100","amount":5}
+            """;
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.origin.id").value("100"))
+                .andExpect(jsonPath("$.origin.balance").value(15));
+    }
+
+    @Test
+    void shouldReturn404AndBodyZeroWhenWithdrawingFromMissingAccount() throws Exception {
+        when(withdrawService.withdraw("200", 10))
+                .thenThrow(new AccountNotFoundException("200"));
+
+        String body = """
+            {"type":"withdraw","origin":"200","amount":10}
+            """;
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string("0"));
+    }
+
+    @Test
+    void shouldReturn422WhenWithdrawingWithInsufficientBalance() throws Exception {
+        when(withdrawService.withdraw("100", 50))
+                .thenThrow(new InsufficientBalanceException("100", 10));
+
+        String body = """
+            {"type":"withdraw","origin":"100","amount":50}
+            """;
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.id").value("100"))
+                .andExpect(jsonPath("$.balance").value(10));
     }
 }
