@@ -4,6 +4,8 @@ import br.com.gabrieltiziano.ipkiss.domain.exception.AccountNotFoundException;
 import br.com.gabrieltiziano.ipkiss.domain.exception.InsufficientBalanceException;
 import br.com.gabrieltiziano.ipkiss.domain.model.Account;
 import br.com.gabrieltiziano.ipkiss.domain.service.DepositService;
+import br.com.gabrieltiziano.ipkiss.domain.service.TransferResult;
+import br.com.gabrieltiziano.ipkiss.domain.service.TransferService;
 import br.com.gabrieltiziano.ipkiss.domain.service.WithdrawService;
 import br.com.gabrieltiziano.ipkiss.web.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,9 @@ class EventControllerTest {
 
     @MockitoBean
     private WithdrawService withdrawService;
+
+    @MockitoBean
+    private TransferService transferService;
 
     @Test
     void shouldReturn201WithDepositResponseWhenDepositSucceeds() throws Exception {
@@ -111,6 +116,52 @@ class EventControllerTest {
         mockMvc.perform(post("/event")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.id").value("100"))
+                .andExpect(jsonPath("$.balance").value(10));
+    }
+
+    @Test
+    void shouldReturn201WithTransferResponseWhenTransferSucceeds() throws Exception {
+        when(transferService.transfer("100", 15, "300"))
+                .thenReturn(new TransferResult(new Account("100", 0), new Account("300", 15)));
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {"type":"transfer","origin":"100","amount":15,"destination":"300"}
+                    """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.origin.id").value("100"))
+                .andExpect(jsonPath("$.origin.balance").value(0))
+                .andExpect(jsonPath("$.destination.id").value("300"))
+                .andExpect(jsonPath("$.destination.balance").value(15));
+    }
+
+    @Test
+    void shouldReturn404AndBodyZeroWhenTransferOriginDoesNotExist() throws Exception {
+        when(transferService.transfer("200", 15, "300"))
+                .thenThrow(new AccountNotFoundException("200"));
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {"type":"transfer","origin":"200","amount":15,"destination":"300"}
+                    """))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string("0"));
+    }
+
+    @Test
+    void shouldReturn422WhenTransferringWithInsufficientBalance() throws Exception {
+        when(transferService.transfer("100", 9999, "300"))
+                .thenThrow(new InsufficientBalanceException("100", 10));
+
+        mockMvc.perform(post("/event")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {"type":"transfer","origin":"100","amount":9999,"destination":"300"}
+                    """))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.id").value("100"))
                 .andExpect(jsonPath("$.balance").value(10));
