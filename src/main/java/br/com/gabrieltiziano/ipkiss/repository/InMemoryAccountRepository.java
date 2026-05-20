@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 
 @Repository
 public class InMemoryAccountRepository implements AccountRepository{
@@ -25,5 +26,10 @@ public class InMemoryAccountRepository implements AccountRepository{
     @Override
     public void clear() {
         accounts.clear();
+    }
+
+    @Override
+    public Account update(String id, BiFunction<String, Account, Account> remapper) {
+        return accounts.compute(id, remapper);
     }
 }
