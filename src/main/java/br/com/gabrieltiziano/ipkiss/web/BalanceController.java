@@ -15,9 +15,9 @@ public class BalanceController {
         this.balanceService = balanceService;
     }
 
-    @GetMapping(value = "/balance", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> getBalance(@RequestParam("account_id") String accountId) {
+    @GetMapping("/balance")
+    public ResponseEntity<Integer> getBalance(@RequestParam("account_id") String accountId) {
         int balance = balanceService.getBalance(accountId);
-        return ResponseEntity.ok(String.valueOf(balance));
+        return ResponseEntity.ok(balance);
     }
 }
